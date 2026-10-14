@@ -1,0 +1,120 @@
+import {createRequire} from 'node:module';
+import {mkdir,writeFile} from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import assert from 'node:assert/strict';
+const require=createRequire(import.meta.url);
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const root=process.env.FRONTEND_QA_DIR,url=process.env.FRONTEND_QA_URL;
+await mkdir(root,{recursive:true});
+const rows=['record_key,label,event_date,quantity'];
+for(let i=1;i<=5000;i++)rows.push(`${String(i).padStart(6,'0')},Widget,20261009,7${i===2?',extra':''}`);
+rows.push('005001,"SECRET"x,20261009,7','005002,Widget,20261009,7');
+const fixture=path.join(root,'synthetic-errors.csv');
+await writeFile(fixture,rows.join('\n')+'\n');
+const browser=await chromium.launchPersistentContext(path.join(root,'browser-profile'),{
+  executablePath:process.env.FRONTEND_QA_BROWSER,headless:true,viewport:{width:1440,height:1050},
+});
+const page=await browser.newPage(),errors=[];
+page.on('pageerror',error=>errors.push(error.message));
+try{
+  await page.goto(url);
+  await page.getByRole('button',{name:'连接本地服务'}).first().click();
+  await page.getByLabel('访问令牌',{exact:true}).fill(process.env.CSVHUB_API_TOKEN);
+  await page.getByRole('button',{name:'连接服务',exact:true}).click();
+  await page.getByText('服务已连接',{exact:true}).waitFor();
+  await page.getByRole('link',{name:'文件导入',exact:true}).click();
+  await page.locator('#file-input').setInputFiles(fixture);
+  await page.getByRole('button',{name:'校验并上传',exact:true}).click();
+  await page.locator('#dataset-name').fill('合成库存错误验证');
+  await page.locator('#on-error').selectOption('skip');
+  await page.getByRole('button',{name:'开始后台导入',exact:true}).click();
+  const task=page.locator('#job-list tbody tr').filter({hasText:'合成库存错误验证'});
+  await task.getByText('导入失败',{exact:true}).waitFor({timeout:20000});
+  const detail=task.getByRole('button',{name:'详情',exact:true});
+  await detail.click();
+  const dialog=page.locator('#dialog');
+  await dialog.getByText('导入任务详情',{exact:true}).waitFor();
+  const text=await dialog.innerText();
+  assert(text.includes('处理 5,000 条，接受 4,999 条，拒绝 1 条'),text);
+  assert(text.includes('已跳过 1 条')&&text.includes('任务因下方另一项错误停止'),text);
+  assert(text.includes('结束引号后出现')&&text.includes('来源第 5,001 条记录')&&text.includes('文件第 5,002 行'),text);
+  assert(text.includes('列数与表头不一致')&&!text.includes('SECRET'),text);
+  await page.screenshot({path:path.join(root,'01-parse-error.png'),fullPage:true});
+  await dialog.getByRole('button',{name:'关闭',exact:true}).click();
+  // The old generic error remains immutable; the UI explains missing diagnostics.
+  const jobId=await detail.getAttribute('data-id');
+  await page.route(`${url}/api/v1/jobs/${jobId}`,async route=>{
+    const response=await route.fetch();
+    const json=await response.json();
+    await route.fulfill({response,json:{...json,error:'Error'}});
+  });
+  await detail.click();
+  await dialog.getByText(/旧版任务只保存了通用错误/).waitFor();
+  await page.screenshot({path:path.join(root,'02-legacy-error.png'),fullPage:true});
+  await dialog.getByRole('button',{name:'关闭',exact:true}).click();
+  await page.unroute(`${url}/api/v1/jobs/${jobId}`);
+  const failedTask=page.locator('#job-list tbody tr').filter({hasText:jobId.slice(0,8)});
+  await failedTask.getByRole('button',{name:'逐行容错重试',exact:true}).click();
+  const completedTask=page.locator('#job-list tbody tr').filter({hasText:'合成库存错误验证'}).filter({hasText:'已完成'});
+  await completedTask.getByText('已完成',{exact:true}).waitFor({timeout:20000});
+  await completedTask.getByRole('button',{name:'详情',exact:true}).click();
+  await dialog.getByText('导入任务详情',{exact:true}).waitFor();
+  const completedText=await dialog.innerText();
+  assert(completedText.includes('处理 5,002 条，接受 5,000 条，拒绝 2 条'),completedText);
+  assert(completedText.includes('一行一条记录（逐行容错）')&&completedText.includes('已跳过 2 条'),completedText);
+  assert(completedText.includes('来源第 5,001 条记录')&&!completedText.includes('导入已停止')&&!completedText.includes('SECRET'),completedText);
+  await page.screenshot({path:path.join(root,'03-single-line-retry.png'),fullPage:true});
+  await dialog.getByRole('button',{name:'关闭',exact:true}).click();
+  await page.getByRole('link',{name:'数据查询',exact:true}).click();
+  await page.locator('#query-dataset').selectOption({label:'合成库存错误验证'});
+  await page.locator('[data-filter="0"][data-key="value"]').fill('005002');
+  await page.getByRole('button',{name:'查询数据',exact:true}).click();
+  await page.locator('.result-table tbody tr').waitFor();
+  assert((await page.locator('.result-table tbody tr').innerText()).includes('005002'));
+  // Configure the same contract for a fresh import from the upload page.
+  await page.getByRole('link',{name:'文件导入',exact:true}).click();
+  await page.locator('#csv-row-mode').selectOption('single_line');
+  await page.locator('#csv-row-mode:not([disabled])').waitFor();
+  assert.equal(await page.locator('#on-error').inputValue(),'skip');
+  await page.locator('#target-dataset').selectOption('');
+  await page.locator('#dataset-name').fill('逐行配置合成验证');
+  await page.screenshot({path:path.join(root,'04-single-line-setting.png'),fullPage:true});
+  await page.getByRole('button',{name:'开始后台导入',exact:true}).click();
+  const configured=page.locator('#job-list tbody tr').filter({hasText:'逐行配置合成验证'});
+  await configured.getByText('已完成',{exact:true}).waitFor({timeout:20000});
+  // A bad record in the first preview must be recoverable without a second upload.
+  const earlyFile=path.join(root,'early-quote-error.csv');
+  await writeFile(earlyFile,'record_key,label\n00001,"SECRET"x\n00002,Widget\n');
+  await page.getByRole('link',{name:'文件导入',exact:true}).click();
+  await page.locator('#csv-row-mode').selectOption('standard');
+  await page.locator('#csv-row-mode:not([disabled])').waitFor();
+  await page.locator('#file-input').setInputFiles(earlyFile);
+  await page.getByRole('button',{name:'校验并上传',exact:true}).click();
+  await page.locator('.toast.error').filter({hasText:/CSV 解析失败：结束引号/}).first().waitFor();
+  await page.locator('#csv-row-mode').selectOption('single_line');
+  await page.locator('#csv-row-mode:not([disabled])').waitFor();
+  await page.locator('#target-dataset').selectOption('');
+  await page.locator('#dataset-name').fill('预览坏行合成验证');
+  const previewNotice=await page.locator('.mapping-scroll').count();
+  assert(previewNotice===1);
+  await page.getByRole('button',{name:'开始后台导入',exact:true}).click();
+  const earlyTask=page.locator('#job-list tbody tr').filter({hasText:'预览坏行合成验证'});
+  await earlyTask.getByText('已完成',{exact:true}).waitFor({timeout:20000});
+  // A CSV setting must not leak into Excel imports when changing file format.
+  await page.getByRole('link',{name:'文件导入',exact:true}).click();
+  await page.locator('#file-input').setInputFiles(path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../csvhub/web/example.xlsx'));
+  assert(await page.locator('#csv-row-mode').count()===0);
+  await page.getByRole('button',{name:'校验并上传',exact:true}).click();
+  await page.locator('#excel-sheet').waitFor();
+  await page.locator('#target-dataset').selectOption('');
+  await page.locator('#dataset-name').fill('容错模式后 Excel 验证');
+  await page.getByRole('button',{name:'开始后台导入',exact:true}).click();
+  await page.locator('#job-list tbody tr').filter({hasText:'容错模式后 Excel 验证'}).getByText('已完成',{exact:true}).waitFor({timeout:20000});
+  assert.equal(errors.length,0,JSON.stringify(errors));
+  const result={status:'passed',standard:{processed:5000,accepted:4999,rejected:1,status:'failed'},
+    single_line:{processed:5002,accepted:5000,rejected:2,status:'completed'},browser_errors:errors,
+    checks:['column mismatch skipped','standard CSV structure error stops','committed counts','safe failure type and position','translated row error','legacy error explanation','source content absent','single-line retry without upload','completed after rejecting quote error','following record indexed and queryable','single-line import setting','switch to single-line after failed preview','Excel ignores CSV row mode']};
+  await writeFile(path.join(root,'result.json'),JSON.stringify(result,null,2));
+  console.log(JSON.stringify(result,null,2));
+}finally{await browser.close();}

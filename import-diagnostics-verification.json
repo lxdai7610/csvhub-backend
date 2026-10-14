@@ -1,0 +1,31 @@
+{
+  "status": "passed",
+  "standard": {
+    "processed": 5000,
+    "accepted": 4999,
+    "rejected": 1,
+    "status": "failed"
+  },
+  "single_line": {
+    "processed": 5002,
+    "accepted": 5000,
+    "rejected": 2,
+    "status": "completed"
+  },
+  "browser_errors": [],
+  "checks": [
+    "column mismatch skipped",
+    "standard CSV structure error stops",
+    "committed counts",
+    "safe failure type and position",
+    "translated row error",
+    "legacy error explanation",
+    "source content absent",
+    "single-line retry without upload",
+    "completed after rejecting quote error",
+    "following record indexed and queryable",
+    "single-line import setting",
+    "switch to single-line after failed preview",
+    "Excel ignores CSV row mode"
+  ]
+}

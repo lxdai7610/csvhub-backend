@@ -1,0 +1,4 @@
+record_key,label,event_date,quantity
+000001,Widget A,2026-10-09,7
+000002,"Widget, B",20261010,3
+000003,Widget C,2026-10-11,0

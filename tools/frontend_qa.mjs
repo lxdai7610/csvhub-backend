@@ -1,0 +1,106 @@
+import {createRequire} from 'node:module';
+import {mkdir,writeFile} from 'node:fs/promises';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+const require=createRequire(import.meta.url);
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const root=process.env.FRONTEND_QA_DIR,url=process.env.FRONTEND_QA_URL;
+await mkdir(path.join(root,'downloads'),{recursive:true});
+const browser=await chromium.launchPersistentContext(path.join(root,'browser-profile'),{
+  executablePath:process.env.FRONTEND_QA_BROWSER,headless:true,viewport:{width:1440,height:1050},
+  downloadsPath:path.join(root,'downloads'),
+});
+const page=await browser.newPage(),errors=[];
+page.on('pageerror',error=>errors.push(error.message));
+let chunks=0;const chunkOffsets=[];
+page.on('request',request=>{if(request.url().includes('/chunks?')){chunks++;chunkOffsets.push(new URL(request.url()).searchParams.get('offset'));}});
+try{
+  await page.goto(url);await page.getByRole('heading',{name:'数据工作台',exact:true}).waitFor();
+  await page.screenshot({path:path.join(root,'01-disconnected.png'),fullPage:true});
+  await page.getByRole('button',{name:'连接本地服务'}).first().click();
+  await page.getByLabel('访问令牌',{exact:true}).fill(process.env.CSVHUB_API_TOKEN);
+  await page.getByRole('button',{name:'连接服务',exact:true}).click();
+  await page.getByText('服务已连接',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'导入文件',exact:true}).first().click();
+  let releaseChunk,notifyBlocked;
+  const blocked=new Promise(resolve=>notifyBlocked=resolve);
+  const released=new Promise(resolve=>releaseChunk=resolve);
+  let intercepted=0;
+  await page.route('**/chunks?*',async route=>{
+    if(++intercepted===2){notifyBlocked();await released;}
+    await route.continue().catch(()=>{});
+  });
+  await page.locator('#file-input').setInputFiles(process.env.FRONTEND_QA_FILE);
+  await page.getByRole('button',{name:'校验并上传',exact:true}).click();
+  await blocked;
+  assert.equal(chunkOffsets[1],'131072','First chunk must have been committed before interruption');
+  await page.getByRole('button',{name:'暂停上传',exact:true}).click();
+  await page.getByRole('button',{name:'继续校验与上传',exact:true}).waitFor();
+  releaseChunk();
+  await page.reload();
+  await page.getByText('服务已连接',{exact:true}).waitFor();
+  await page.locator('#file-input').setInputFiles(process.env.FRONTEND_QA_FILE);
+  await page.getByRole('button',{name:'校验并上传',exact:true}).click();
+  await page.getByRole('button',{name:'开始后台导入',exact:true}).waitFor({timeout:45000});
+  assert.equal(chunkOffsets.filter(offset=>offset==='0').length,1,'Reload resume must preserve durable first chunk');
+  await page.unroute('**/chunks?*');
+  await page.locator('#dataset-name').fill('库存演示');
+  await page.locator('[data-map="2"][data-key="kind"]').selectOption('date');
+  await page.locator('[data-map="3"][data-key="kind"]').selectOption('integer');
+  await page.screenshot({path:path.join(root,'02-import.png'),fullPage:true});
+  assert(chunks>=2,'Upload must actually use multiple chunks');
+  await page.getByRole('button',{name:'开始后台导入',exact:true}).click();
+  await page.getByRole('heading',{name:'导入任务',exact:true}).waitFor();
+  await page.getByText('已完成',{exact:true}).waitFor({timeout:20000});
+  await page.getByRole('link',{name:'数据查询',exact:true}).click();
+  await page.locator('#query-dataset').selectOption({label:'库存演示'});
+  await page.getByRole('button',{name:'查询数据',exact:true}).click();
+  await page.getByRole('button',{name:'下一页'}).waitFor();
+  await page.locator('.result-table tbody tr').first().waitFor();
+  assert.equal(await page.locator('.result-table tbody tr').count(),50);
+  assert((await page.locator('.result-table tbody tr').first().innerText()).includes('000001'));
+  assert.equal(await page.locator('.result-table img').count(),0,'Source text must not render as HTML');
+  assert.equal(await page.evaluate(()=>window.__xss),undefined);
+  await page.getByRole('button',{name:'下一页'}).click();
+  await page.getByText('第 2 页 · 每页最多 50 条',{exact:true}).waitFor();
+  assert((await page.locator('.result-table tbody tr').first().innerText()).includes('000051'));
+  await page.getByRole('button',{name:'上一页'}).click();
+  await page.getByText('第 1 页 · 每页最多 50 条',{exact:true}).waitFor();
+  await page.locator('[data-filter="0"][data-key="value"]').fill('000001');
+  await page.getByRole('button',{name:'查询数据',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelectorAll('.result-table tbody tr').length===1);
+  assert((await page.locator('.result-table tbody').innerText()).includes('2026-10-09'));
+  await page.screenshot({path:path.join(root,'03-query.png'),fullPage:true});
+  await page.getByRole('link',{name:'工作台概览',exact:true}).click();
+  await page.getByRole('heading',{name:'数据工作台',exact:true}).waitFor();
+  await page.screenshot({path:path.join(root,'04-overview.png'),fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().right<=1);
+  await page.screenshot({path:path.join(root,'05-mobile.png'),fullPage:true});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Mobile page must not overflow horizontally');
+  await page.getByRole('button',{name:'展开导航'}).click();
+  await page.getByRole('link',{name:'导入任务',exact:true}).click();
+  let releaseStats,notifyStats,notifyStatsDelivered;
+  const statsBlocked=new Promise(resolve=>notifyStats=resolve);
+  const statsReleased=new Promise(resolve=>releaseStats=resolve);
+  const statsDelivered=new Promise(resolve=>notifyStatsDelivered=resolve);
+  await page.route('**/api/v1/stats',async route=>{
+    const response=await route.fetch();notifyStats();await statsReleased;
+    await route.fulfill({response});notifyStatsDelivered();
+  });
+  await page.getByRole('button',{name:'刷新',exact:true}).click();
+  await statsBlocked;
+  await page.getByRole('button',{name:'展开导航'}).click();
+  await page.getByRole('link',{name:'系统设置',exact:true}).click();
+  await page.getByRole('button',{name:'退出连接',exact:true}).click();
+  releaseStats();await statsDelivered;
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  assert.equal(await page.evaluate(()=>sessionStorage.getItem('csvhub.token')),null);
+  await page.getByText('未连接',{exact:true}).first().waitFor();
+  assert.equal(await page.getByRole('button',{name:'退出连接',exact:true}).count(),0,'Late API response cannot restore logged-out data');
+  assert.equal(errors.length,0,JSON.stringify(errors));
+  const result={status:'passed',synthetic_rows:3500,uploaded_chunks:chunks,
+    checks:['token login','multi-chunk upload','pause/reload/resume upload','field mapping','background import','date/integer types','index query','next/previous cursor pages','leading zero','HTML escaping','mobile width','logout with pending API response'],browser_errors:errors};
+  await writeFile(path.join(root,'result.json'),JSON.stringify(result,null,2));
+  console.log(JSON.stringify(result,null,2));
+}finally{await browser.close();}

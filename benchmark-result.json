@@ -1,0 +1,53 @@
+{
+  "data": "synthetic inventory only",
+  "rows": 20000010,
+  "csv_bytes": 420000230,
+  "database_bytes": 1554436096,
+  "generation_seconds": 6.703,
+  "upload_and_checksum_seconds": 4.157,
+  "import_index_verify_warm_seconds": 138.406,
+  "phases": [
+    {
+      "phase": "queued",
+      "seconds": 0.015
+    },
+    {
+      "phase": "importing",
+      "seconds": 0.515
+    },
+    {
+      "phase": "indexing",
+      "seconds": 94.859
+    },
+    {
+      "phase": "verifying",
+      "seconds": 120.25
+    },
+    {
+      "phase": "completed",
+      "seconds": 138.406
+    }
+  ],
+  "peak_api_process_rss_mib": 247.39,
+  "peak_importer_process_rss_mib": 91.93,
+  "exact_query_result_cache_miss_p50_ms": 6.214,
+  "exact_query_result_cache_miss_p95_ms": 8.439,
+  "exact_query_result_cache_hit_p50_ms": 6.691,
+  "exact_query_result_cache_hit_p95_ms": 11.16,
+  "category_query_plan": [
+    "SEARCH records USING INDEX ix_1 (c1=?)"
+  ],
+  "cache": {
+    "entries": 100,
+    "accounted_bytes": 86736,
+    "max_bytes": 134217728,
+    "hits": 100,
+    "misses": 100
+  },
+  "accepted": 20000010,
+  "rejected": 0,
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.14",
+  "sqlite": "3.53.1",
+  "notes": "HTTP TestClient; local files and OS cache may be warm; 2 short text columns, 2 indexes; no concurrency load test"
+}

@@ -1,0 +1,30 @@
+{
+  "status": "passed",
+  "formats": [
+    {
+      "format": "xls",
+      "status": "passed",
+      "sheets": 2,
+      "selected_sheet": "备选数据",
+      "imported_rows": 1
+    },
+    {
+      "format": "xlsx",
+      "status": "passed",
+      "sheets": 2,
+      "selected_sheet": "备选数据",
+      "imported_rows": 1
+    }
+  ],
+  "browser_errors": [],
+  "checks": [
+    "Excel file selection",
+    "CSV controls hidden",
+    "worksheet switch",
+    "field types",
+    "background import",
+    "selected sheet only",
+    "index query",
+    "saved formula result"
+  ]
+}

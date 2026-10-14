@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>登录 · CSVHub</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/styles.css?v=0.3.7-vm">
+  <script type="module" src="/assets/login.js?v=0.3.7-vm"></script>
+</head>
+<body class="login-page">
+  <main class="login-card" aria-labelledby="login-title">
+    <div class="login-brand">CSVHub</div>
+    <h1 id="login-title">登录</h1>
+    <p class="login-subtitle">登录后进入工作台</p>
+    <form id="account-login-form" method="post">
+      <label class="form-label" for="login-username">用户名</label>
+      <input id="login-username" name="username" class="input" autocomplete="username" maxlength="64" required autofocus>
+      <label class="form-label" for="login-password">密码</label>
+      <input id="login-password" name="password" class="input" type="password" autocomplete="current-password" minlength="8" maxlength="128" required>
+      <button class="btn primary login-submit" type="submit">登录</button>
+    </form>
+    <p id="login-message" class="login-message" role="status" aria-live="polite"></p>
+    <details class="login-admin">
+      <summary>管理员令牌登录</summary>
+      <form id="token-login-form" method="post">
+        <label class="form-label" for="login-token">访问令牌</label>
+        <input id="login-token" class="input" type="password" autocomplete="off" minlength="24" maxlength="1024" required>
+        <button class="btn login-submit" type="submit">登录</button>
+      </form>
+    </details>
+    <noscript>请启用 JavaScript 后登录。</noscript>
+  </main>
+</body>
+</html>

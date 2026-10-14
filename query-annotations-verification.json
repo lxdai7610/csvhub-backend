@@ -1,0 +1,29 @@
+{
+  "version": "0.3.1",
+  "status": "passed",
+  "new_backend_scenarios": 8,
+  "targeted_recheck_passed": 9,
+  "targeted_recheck_failed": 0,
+  "browser": {
+    "status": "passed",
+    "checks": [
+      "administrator creates custom accounts in UI",
+      "administrator password setup and password login",
+      "ordinary user sees exactly three menus and server rejects administration",
+      "100-record ordered batch and safe cell rendering",
+      "mark, unmark and notes persist after reload",
+      "1000-record next batch and history restoration",
+      "in-flight note save survives navigation away from the batch",
+      "ordinary user can query published data",
+      "query displays durable marks and notes with escaped content",
+      "query marks and notes survive a full browser reload",
+      "changing marks updates displayed results and cached queries read fresh notes",
+      "users have independent extraction positions and annotations",
+      "cached source pages do not leak another user annotation",
+      "mobile extraction and limited navigation",
+      "disabled account immediately loses its active session"
+    ],
+    "browser_errors": []
+  },
+  "source_data": "synthetic inventory only"
+}

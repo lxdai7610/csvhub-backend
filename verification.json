@@ -1,0 +1,141 @@
+{
+  "pytest_passed": 101,
+  "actual_http_smoke": "passed",
+  "forced_process_kill_recovery_rows": 200000,
+  "scale_test": "passed",
+  "source_data": "synthetic inventory only",
+  "frontend_sha256_tests_passed": 15,
+  "frontend_browser": {
+    "status": "passed",
+    "synthetic_rows": 3500,
+    "checks": [
+      "token login",
+      "multi-chunk upload",
+      "pause/reload/resume upload",
+      "field mapping",
+      "background import",
+      "date/integer types",
+      "index query",
+      "next/previous cursor pages",
+      "leading zero",
+      "HTML escaping",
+      "mobile width",
+      "logout with pending API response"
+    ],
+    "browser_errors": [],
+    "upload_chunk_requests": 4,
+    "committed_chunks": 3
+  },
+  "frontend_requires_restart_of_existing_service": true,
+  "restart_process_ownership_tests_passed": 4,
+  "version": "0.3.1",
+  "excel_scenarios_passed": 12,
+  "excel_browser": {
+    "status": "passed",
+    "formats": [
+      {
+        "format": "xls",
+        "status": "passed",
+        "sheets": 2,
+        "selected_sheet": "备选数据",
+        "imported_rows": 1
+      },
+      {
+        "format": "xlsx",
+        "status": "passed",
+        "sheets": 2,
+        "selected_sheet": "备选数据",
+        "imported_rows": 1
+      }
+    ],
+    "browser_errors": [],
+    "checks": [
+      "Excel file selection",
+      "CSV controls hidden",
+      "worksheet switch",
+      "field types",
+      "background import",
+      "selected sheet only",
+      "index query",
+      "saved formula result"
+    ]
+  },
+  "import_diagnostics_scenarios_passed": 8,
+  "import_diagnostics_browser": {
+    "status": "passed",
+    "standard": {
+      "processed": 5000,
+      "accepted": 4999,
+      "rejected": 1,
+      "status": "failed"
+    },
+    "single_line": {
+      "processed": 5002,
+      "accepted": 5000,
+      "rejected": 2,
+      "status": "completed"
+    },
+    "browser_errors": [],
+    "checks": [
+      "column mismatch skipped",
+      "standard CSV structure error stops",
+      "committed counts",
+      "safe failure type and position",
+      "translated row error",
+      "legacy error explanation",
+      "source content absent",
+      "single-line retry without upload",
+      "completed after rejecting quote error",
+      "following record indexed and queryable",
+      "single-line import setting",
+      "switch to single-line after failed preview",
+      "Excel ignores CSV row mode"
+    ]
+  },
+  "single_line_scenarios_passed": 11,
+  "account_extraction_scenarios_passed": 32,
+  "account_extraction_browser": {
+    "status": "passed",
+    "checks": [
+      "administrator creates custom accounts in UI",
+      "administrator password setup and password login",
+      "ordinary user sees exactly three menus and server rejects administration",
+      "100-record ordered batch and safe cell rendering",
+      "mark, unmark and notes persist after reload",
+      "1000-record next batch and history restoration",
+      "in-flight note save survives navigation away from the batch",
+      "ordinary user can query published data",
+      "query displays durable marks and notes with escaped content",
+      "query marks and notes survive a full browser reload",
+      "changing marks updates displayed results and cached queries read fresh notes",
+      "users have independent extraction positions and annotations",
+      "cached source pages do not leak another user annotation",
+      "mobile extraction and limited navigation",
+      "disabled account immediately loses its active session"
+    ],
+    "browser_errors": []
+  },
+  "query_annotation_scenarios_passed": 8,
+  "query_annotation_browser": {
+    "status": "passed",
+    "checks": [
+      "administrator creates custom accounts in UI",
+      "administrator password setup and password login",
+      "ordinary user sees exactly three menus and server rejects administration",
+      "100-record ordered batch and safe cell rendering",
+      "mark, unmark and notes persist after reload",
+      "1000-record next batch and history restoration",
+      "in-flight note save survives navigation away from the batch",
+      "ordinary user can query published data",
+      "query displays durable marks and notes with escaped content",
+      "query marks and notes survive a full browser reload",
+      "changing marks updates displayed results and cached queries read fresh notes",
+      "users have independent extraction positions and annotations",
+      "cached source pages do not leak another user annotation",
+      "mobile extraction and limited navigation",
+      "disabled account immediately loses its active session"
+    ],
+    "browser_errors": []
+  },
+  "pytest_verification": "100 scenarios passed in the full run; the response-budget test and all 8 annotation scenarios passed in the targeted recheck (9/9)."
+}

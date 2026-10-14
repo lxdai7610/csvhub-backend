@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "synthetic_rows": 3500,
+  "checks": [
+    "token login",
+    "multi-chunk upload",
+    "pause/reload/resume upload",
+    "field mapping",
+    "background import",
+    "date/integer types",
+    "index query",
+    "next/previous cursor pages",
+    "leading zero",
+    "HTML escaping",
+    "mobile width",
+    "logout with pending API response"
+  ],
+  "browser_errors": [],
+  "upload_chunk_requests": 4,
+  "committed_chunks": 3
+}
